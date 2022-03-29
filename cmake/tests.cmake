@@ -46,8 +46,8 @@ set(lite_test_protos
 
 set(tests_protos
   google/protobuf/any_test.proto
-  google/protobuf/compiler/cpp/cpp_test_bad_identifiers.proto
-  google/protobuf/compiler/cpp/cpp_test_large_enum_value.proto
+  google/protobuf/compiler/cpp/test_bad_identifiers.proto
+  google/protobuf/compiler/cpp/test_large_enum_value.proto
   google/protobuf/map_proto2_unittest.proto
   google/protobuf/map_unittest.proto
   google/protobuf/unittest.proto
@@ -56,6 +56,7 @@ set(tests_protos
   google/protobuf/unittest_drop_unknown_fields.proto
   google/protobuf/unittest_embed_optimize_for.proto
   google/protobuf/unittest_empty.proto
+  google/protobuf/unittest_enormous_descriptor.proto
   google/protobuf/unittest_import.proto
   google/protobuf/unittest_import_public.proto
   google/protobuf/unittest_lazy_dependencies.proto
@@ -126,15 +127,21 @@ set(common_lite_test_files
   ${protobuf_SOURCE_DIR}/src/google/protobuf/test_util_lite.cc
 )
 
+add_library(protobuf-lite-test-common ${protobuf_SHARED_OR_STATIC}
+  ${common_lite_test_files} ${lite_test_proto_files})
+
 set(common_test_files
   ${common_lite_test_files}
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/mock_code_generator.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/map_test_util.inc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/reflection_tester.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/test_util.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/test_util.inc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/testing/file.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/testing/googletest.cc
 )
+
+add_library(protobuf-test-common ${protobuf_SHARED_OR_STATIC}
+  ${common_test_files} ${tests_proto_files})
 
 set(tests_files
   ${protobuf_SOURCE_DIR}/src/google/protobuf/any_test.cc
@@ -142,22 +149,22 @@ set(tests_files
   ${protobuf_SOURCE_DIR}/src/google/protobuf/arenastring_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/arenaz_sampler_test.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/annotation_test_util.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/annotation_test_util.h
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/command_line_interface_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/cpp_bootstrap_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/cpp_move_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/cpp_plugin_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/cpp_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/cpp_unittest.inc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/bootstrap_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/metadata_test.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/move_unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/plugin_unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/cpp/unittest.inc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/csharp/csharp_bootstrap_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/csharp/csharp_generator_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/importer_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/java/java_doc_comment_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/java/java_plugin_unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/java/doc_comment_unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/java/plugin_unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/mock_code_generator.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/objectivec/objectivec_helpers_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/parser_unittest.cc
-  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/python/python_plugin_unittest.cc
+  ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/python/plugin_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/ruby/ruby_generator_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/descriptor_database_unittest.cc
   ${protobuf_SOURCE_DIR}/src/google/protobuf/descriptor_unittest.cc
@@ -232,13 +239,13 @@ if(MINGW)
 
 endif()
 
-add_executable(tests ${tests_files} ${common_test_files} ${tests_proto_files} ${lite_test_proto_files})
+add_executable(tests ${tests_files})
 if (MSVC)
   target_compile_options(tests PRIVATE
     /wd4146 # unary minus operator applied to unsigned type, result still unsigned
   )
 endif()
-target_link_libraries(tests libprotoc libprotobuf GTest::gmock_main)
+target_link_libraries(tests protobuf-lite-test-common protobuf-test-common libprotoc libprotobuf GTest::gmock_main)
 
 set(test_plugin_files
   ${protobuf_SOURCE_DIR}/src/google/protobuf/compiler/mock_code_generator.cc
@@ -253,14 +260,14 @@ target_link_libraries(test_plugin libprotoc libprotobuf GTest::gmock)
 set(lite_test_files
   ${protobuf_SOURCE_DIR}/src/google/protobuf/lite_unittest.cc
 )
-add_executable(lite-test ${lite_test_files} ${common_lite_test_files} ${lite_test_proto_files})
-target_link_libraries(lite-test libprotobuf-lite GTest::gmock_main)
+add_executable(lite-test ${lite_test_files})
+target_link_libraries(lite-test protobuf-lite-test-common libprotobuf-lite GTest::gmock_main)
 
 set(lite_arena_test_files
   ${protobuf_SOURCE_DIR}/src/google/protobuf/lite_arena_unittest.cc
 )
-add_executable(lite-arena-test ${lite_arena_test_files} ${common_lite_test_files} ${lite_test_proto_files})
-target_link_libraries(lite-arena-test libprotobuf-lite GTest::gmock_main)
+add_executable(lite-arena-test ${lite_arena_test_files})
+target_link_libraries(lite-arena-test protobuf-lite-test-common libprotobuf-lite GTest::gmock_main)
 
 add_custom_target(check
   COMMAND tests
